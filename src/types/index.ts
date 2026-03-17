@@ -6,6 +6,7 @@ export interface Grupo {
   criado_em?: string;
   created_at?: string;
   email_relatorio?: string;
+  codigo_convite?: string;
 }
 
 export type TipoTransacao = 'despesa' | 'renda';

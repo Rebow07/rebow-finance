@@ -2,6 +2,7 @@
   "expo": {
     "name": "rebow-finance",
     "slug": "rebow-finance",
+    "scheme": "rebowfinance", 
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
@@ -12,9 +13,11 @@
       "backgroundColor": "#ffffff"
     },
     "ios": {
-      "supportsTablet": true
+      "supportsTablet": true,
+      "bundleIdentifier": "com.rebow.finance" 
     },
     "android": {
+      "package": "com.rebow.finance", 
       "adaptiveIcon": {
         "backgroundColor": "#E6F4FE",
         "foregroundImage": "./assets/android-icon-foreground.png",
@@ -25,6 +28,18 @@
     },
     "web": {
       "favicon": "./assets/favicon.png"
-    }
+    },
+    "plugins": [
+      [
+        "expo-notifications",
+        {
+          "icon": "./assets/icon.png",
+          "color": "#FFD54F",
+          "sounds": [],
+          "androidMode": "default",
+          "androidCollapsedTitle": "Rebow Finance"
+        }
+      ]
+    ]
   }
 }

@@ -1,12 +1,15 @@
 // src/navigation/index.tsx
 
 import React from 'react';
-import { StyleSheet } from 'react-native';
+import { View, ActivityIndicator, StyleSheet } from 'react-native';
 import { NavigationContainer } from '@react-navigation/native';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
-import { Home, BarChart2, TrendingUp, CreditCard, Settings, Receipt } from 'lucide-react-native';
+import { Home, TrendingUp, CreditCard, Settings, Receipt } from 'lucide-react-native';
 
+import { useApp } from '../context/AppContext';
+
+import AuthScreen from '../screens/AuthScreen';
 import DashboardScreen from '../screens/DashboardScreen';
 import RelatoriosScreen from '../screens/RelatoriosScreen';
 import RendasScreen from '../screens/RendasScreen';
@@ -59,8 +62,7 @@ function MainTabs() {
           if (route.name === 'Configuracoes') return <Settings size={size} color={color} strokeWidth={sw} />;
           return null;
         },
-      })}
-    >
+      })}>
       <Tab.Screen name="Inicio" component={DashboardScreen} options={{ tabBarLabel: 'Início' }} />
       <Tab.Screen name="Despesas" component={DespesasScreen} options={{ tabBarLabel: 'Despesas' }} />
       <Tab.Screen name="Rendas" component={RendasScreen} options={{ tabBarLabel: 'Rendas' }} />
@@ -70,21 +72,46 @@ function MainTabs() {
   );
 }
 
+function AppAutenticado() {
+  return (
+    <Stack.Navigator screenOptions={{ headerShown: false }}>
+      <Stack.Screen name="MainTabs" component={MainTabs} />
+      <Stack.Screen name="NovaTransacao" component={NovaTransacaoScreen} options={{ presentation: 'modal' }} />
+      <Stack.Screen name="NovaRendaTransacao" component={NovaRendaTransacaoScreen} options={{ presentation: 'modal' }} />
+      <Stack.Screen name="RepetirGasto" component={RepetirGastoScreen} options={{ presentation: 'modal' }} />
+      <Stack.Screen name="DetalheTransacao" component={DetalheTransacaoScreen} options={{ presentation: 'modal' }} />
+    </Stack.Navigator>
+  );
+}
+
+// ─────────────────────────────────────────────
+// NAVEGADOR RAIZ — decide entre Auth e App
+// ─────────────────────────────────────────────
 export default function AppNavigator() {
+  const { sessao, carregandoAuth } = useApp();
+
+  if (carregandoAuth) {
+    return (
+      <View style={styles.loading}>
+        <ActivityIndicator size="large" color={Colors.primary} />
+      </View>
+    );
+  }
+
   return (
     <NavigationContainer>
-      <Stack.Navigator screenOptions={{ headerShown: false }}>
-        <Stack.Screen name="MainTabs" component={MainTabs} />
-        <Stack.Screen name="NovaTransacao" component={NovaTransacaoScreen} options={{ presentation: 'modal' }} />
-        <Stack.Screen name="NovaRendaTransacao" component={NovaRendaTransacaoScreen} options={{ presentation: 'modal' }} />
-        <Stack.Screen name="RepetirGasto" component={RepetirGastoScreen} options={{ presentation: 'modal' }} />
-        <Stack.Screen name="DetalheTransacao" component={DetalheTransacaoScreen} options={{ presentation: 'modal' }} />
-      </Stack.Navigator>
+      {sessao ? <AppAutenticado /> : <AuthScreen />}
     </NavigationContainer>
   );
 }
 
 const styles = StyleSheet.create({
+  loading: {
+    flex: 1,
+    backgroundColor: Colors.background,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
   tabBar: {
     backgroundColor: Colors.background,
     borderTopWidth: 1,

@@ -4,23 +4,194 @@ import React, { useState } from 'react';
 import {
   View, Text, TextInput, TouchableOpacity, ScrollView,
   StyleSheet, Alert, Switch, ActivityIndicator, Modal,
+  FlatList,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { X, Check, CreditCard, ChevronDown } from 'lucide-react-native';
-import { useNavigation, useRoute, RouteProp } from '@react-navigation/native';
+import { X, Check, CreditCard, ChevronDown, Calendar, ChevronLeft, ChevronRight } from 'lucide-react-native';
+import { useNavigation } from '@react-navigation/native';
 import { useApp } from '../context/AppContext';
 import { useCartoes } from '../hooks/useCartoes';
 import { transacoesService, gerarParcelas } from '../services/transacoes.service';
-import { CATEGORIAS, APP_CONFIG } from '../constants';
+import { CATEGORIAS, APP_CONFIG, MESES } from '../constants';
 import { dataParaISO } from '../utils';
 import CategoriaIcon from '../components/CategoriaIcon';
 import { Colors, Spacing, FontSize, FontWeight, BorderRadius, Shadow } from '../theme';
-import { RootStackParamList } from '../navigation';
-
-type RouteT = RouteProp<RootStackParamList, 'NovaTransacao'>;
 
 const PARCELAS_RAPIDAS = ['1', '2', '3', '4', '6', '12'];
+const DIAS_SEMANA = ['Dom', 'Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb'];
 
+// ─────────────────────────────────────────────
+// HELPERS
+// ─────────────────────────────────────────────
+function formatarDataExibicao(data: Date): string {
+  const hoje = new Date();
+  hoje.setHours(0, 0, 0, 0);
+  const d = new Date(data);
+  d.setHours(0, 0, 0, 0);
+  const diff = Math.round((d.getTime() - hoje.getTime()) / (1000 * 60 * 60 * 24));
+  if (diff === 0) return 'Hoje';
+  if (diff === -1) return 'Ontem';
+  if (diff === 1) return 'Amanhã';
+  return `${String(data.getDate()).padStart(2, '0')}/${String(data.getMonth() + 1).padStart(2, '0')}/${data.getFullYear()}`;
+}
+
+function getDiasDoMes(ano: number, mes: number): (number | null)[] {
+  const primeiroDia = new Date(ano, mes, 1).getDay();
+  const totalDias = new Date(ano, mes + 1, 0).getDate();
+  const dias: (number | null)[] = Array(primeiroDia).fill(null);
+  for (let i = 1; i <= totalDias; i++) dias.push(i);
+  // Completa a última semana
+  while (dias.length % 7 !== 0) dias.push(null);
+  return dias;
+}
+
+// ─────────────────────────────────────────────
+// COMPONENTE: DATE PICKER MODAL
+// ─────────────────────────────────────────────
+interface DatePickerProps {
+  visivel: boolean;
+  dataSelecionada: Date;
+  onConfirmar: (data: Date) => void;
+  onFechar: () => void;
+}
+
+function DatePickerModal({ visivel, dataSelecionada, onConfirmar, onFechar }: DatePickerProps) {
+  const [mesAtual, setMesAtual] = useState(dataSelecionada.getMonth());
+  const [anoAtual, setAnoAtual] = useState(dataSelecionada.getFullYear());
+  const [diaSelecionado, setDiaSelecionado] = useState(dataSelecionada.getDate());
+
+  const dias = getDiasDoMes(anoAtual, mesAtual);
+  const hoje = new Date();
+
+  function navegarMes(direcao: number) {
+    let novoMes = mesAtual + direcao;
+    let novoAno = anoAtual;
+    if (novoMes > 11) { novoMes = 0; novoAno++; }
+    if (novoMes < 0) { novoMes = 11; novoAno--; }
+    setMesAtual(novoMes);
+    setAnoAtual(novoAno);
+    setDiaSelecionado(1);
+  }
+
+  function confirmar() {
+    const data = new Date(anoAtual, mesAtual, diaSelecionado);
+    onConfirmar(data);
+  }
+
+  function selecionarHoje() {
+    const h = new Date();
+    setMesAtual(h.getMonth());
+    setAnoAtual(h.getFullYear());
+    setDiaSelecionado(h.getDate());
+  }
+
+  function selecionarOntem() {
+    const ontem = new Date();
+    ontem.setDate(ontem.getDate() - 1);
+    setMesAtual(ontem.getMonth());
+    setAnoAtual(ontem.getFullYear());
+    setDiaSelecionado(ontem.getDate());
+  }
+
+  const isDiaSelecionado = (dia: number) =>
+    dia === diaSelecionado && mesAtual === mesAtual && anoAtual === anoAtual;
+
+  const isHoje = (dia: number) =>
+    dia === hoje.getDate() &&
+    mesAtual === hoje.getMonth() &&
+    anoAtual === hoje.getFullYear();
+
+  return (
+    <Modal visible={visivel} animationType="slide" transparent onRequestClose={onFechar}>
+      <View style={dp.overlay}>
+        <View style={dp.sheet}>
+          {/* Header */}
+          <View style={dp.header}>
+            <TouchableOpacity onPress={onFechar} style={dp.iconBtn}>
+              <X size={20} color={Colors.textPrimary} />
+            </TouchableOpacity>
+            <Text style={dp.titulo}>Selecionar Data</Text>
+            <TouchableOpacity onPress={confirmar} style={dp.confirmarBtn}>
+              <Text style={dp.confirmarText}>OK</Text>
+            </TouchableOpacity>
+          </View>
+
+          {/* Atalhos rápidos */}
+          <View style={dp.atalhos}>
+            <TouchableOpacity style={dp.atalhoBtn} onPress={selecionarHoje}>
+              <Text style={dp.atalhoText}>Hoje</Text>
+            </TouchableOpacity>
+            <TouchableOpacity style={dp.atalhoBtn} onPress={selecionarOntem}>
+              <Text style={dp.atalhoText}>Ontem</Text>
+            </TouchableOpacity>
+          </View>
+
+          {/* Navegação mês/ano */}
+          <View style={dp.navMes}>
+            <TouchableOpacity onPress={() => navegarMes(-1)} style={dp.navBtn}>
+              <ChevronLeft size={20} color={Colors.textPrimary} />
+            </TouchableOpacity>
+            <Text style={dp.navLabel}>{MESES[mesAtual]} {anoAtual}</Text>
+            <TouchableOpacity onPress={() => navegarMes(1)} style={dp.navBtn}>
+              <ChevronRight size={20} color={Colors.textPrimary} />
+            </TouchableOpacity>
+          </View>
+
+          {/* Cabeçalho dias da semana */}
+          <View style={dp.semanasRow}>
+            {DIAS_SEMANA.map(d => (
+              <Text key={d} style={dp.diaSemanaTxt}>{d}</Text>
+            ))}
+          </View>
+
+          {/* Grade de dias */}
+          <View style={dp.grade}>
+            {dias.map((dia, idx) => {
+              if (dia === null) {
+                return <View key={`null-${idx}`} style={dp.diaVazio} />;
+              }
+              const selecionado = isDiaSelecionado(dia);
+              const ehHoje = isHoje(dia);
+              return (
+                <TouchableOpacity
+                  key={`dia-${idx}`}
+                  style={[
+                    dp.diaBtn,
+                    selecionado && dp.diaBtnSelecionado,
+                    !selecionado && ehHoje && dp.diaBtnHoje,
+                  ]}
+                  onPress={() => setDiaSelecionado(dia)}>
+                  <Text style={[
+                    dp.diaTxt,
+                    selecionado && dp.diaTxtSelecionado,
+                    !selecionado && ehHoje && dp.diaTxtHoje,
+                  ]}>
+                    {dia}
+                  </Text>
+                </TouchableOpacity>
+              );
+            })}
+          </View>
+
+          {/* Data selecionada */}
+          <View style={dp.rodape}>
+            <Text style={dp.rodapeLabel}>
+              Selecionado: {String(diaSelecionado).padStart(2, '0')}/{String(mesAtual + 1).padStart(2, '0')}/{anoAtual}
+            </Text>
+            <TouchableOpacity style={dp.btnConfirmar} onPress={confirmar}>
+              <Check size={16} color={Colors.textPrimary} strokeWidth={2.5} />
+              <Text style={dp.btnConfirmarText}>Confirmar</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      </View>
+    </Modal>
+  );
+}
+
+// ─────────────────────────────────────────────
+// TELA PRINCIPAL
+// ─────────────────────────────────────────────
 export default function NovaTransacaoScreen() {
   const nav = useNavigation();
   const { grupoId } = useApp();
@@ -36,6 +207,10 @@ export default function NovaTransacaoScreen() {
   const [cartaoId, setCartaoId] = useState<string | null>(null);
   const [modalCartao, setModalCartao] = useState(false);
   const [salvando, setSalvando] = useState(false);
+
+  // ✅ NOVO: estado de data
+  const [dataSelecionada, setDataSelecionada] = useState(new Date());
+  const [modalData, setModalData] = useState(false);
 
   const cartaoSelecionado = cartoes.find(c => c.id === cartaoId);
   const totalParcelas = mostrarCustom
@@ -59,7 +234,7 @@ export default function NovaTransacaoScreen() {
         valor: valorNum,
         categoria,
         tipo: 'despesa' as const,
-        data: dataParaISO(new Date()),
+        data: dataParaISO(dataSelecionada), // ✅ usa a data selecionada
         fixo,
         parcelado: totalParcelas > 1,
         cartao_id: cartaoId,
@@ -109,6 +284,19 @@ export default function NovaTransacaoScreen() {
           style={[s.input, s.inputGrande]} value={valor} onChangeText={setValor}
           keyboardType="decimal-pad" placeholder="0,00" placeholderTextColor={Colors.textMuted}
         />
+
+        {/* ✅ NOVO: Seletor de data */}
+        <Text style={s.label}>Data</Text>
+        <TouchableOpacity style={s.dataSelector} onPress={() => setModalData(true)}>
+          <Calendar size={18} color={Colors.primaryDark} />
+          <Text style={s.dataSelectorText}>{formatarDataExibicao(dataSelecionada)}</Text>
+          <Text style={s.dataSelectorSub}>
+            {String(dataSelecionada.getDate()).padStart(2, '0')}/
+            {String(dataSelecionada.getMonth() + 1).padStart(2, '0')}/
+            {dataSelecionada.getFullYear()}
+          </Text>
+          <ChevronDown size={16} color={Colors.textMuted} />
+        </TouchableOpacity>
 
         {/* Cartão */}
         <Text style={s.label}>Cartão {cartoes.length === 0 ? '(nenhum cadastrado)' : '(opcional)'}</Text>
@@ -207,6 +395,17 @@ export default function NovaTransacaoScreen() {
         </TouchableOpacity>
       </ScrollView>
 
+      {/* ✅ NOVO: Modal de data */}
+      <DatePickerModal
+        visivel={modalData}
+        dataSelecionada={dataSelecionada}
+        onConfirmar={(data) => {
+          setDataSelecionada(data);
+          setModalData(false);
+        }}
+        onFechar={() => setModalData(false)}
+      />
+
       {/* Modal Cartão */}
       <Modal visible={modalCartao} animationType="slide" transparent>
         <View style={s.modalOverlay}>
@@ -239,6 +438,9 @@ export default function NovaTransacaoScreen() {
   );
 }
 
+// ─────────────────────────────────────────────
+// STYLES — tela principal
+// ─────────────────────────────────────────────
 const s = StyleSheet.create({
   safe: { flex: 1, backgroundColor: Colors.background },
   header: {
@@ -260,6 +462,17 @@ const s = StyleSheet.create({
     color: Colors.textPrimary, backgroundColor: Colors.surface, marginBottom: Spacing.md,
   },
   inputGrande: { fontSize: FontSize.xxl, fontWeight: FontWeight.bold, textAlign: 'center' },
+  // ✅ Data selector
+  dataSelector: {
+    flexDirection: 'row', alignItems: 'center', gap: 10,
+    borderWidth: 1.5, borderColor: Colors.primaryDark, borderRadius: BorderRadius.md,
+    paddingHorizontal: Spacing.md, paddingVertical: 14,
+    backgroundColor: Colors.primaryLight, marginBottom: Spacing.md,
+  },
+  dataSelectorText: {
+    flex: 1, fontSize: FontSize.md, fontWeight: FontWeight.bold, color: Colors.primaryDark,
+  },
+  dataSelectorSub: { fontSize: FontSize.xs, color: Colors.primaryDark, opacity: 0.7 },
   cartaoSelector: {
     flexDirection: 'row', alignItems: 'center', gap: 10,
     borderWidth: 1.5, borderColor: Colors.border, borderRadius: BorderRadius.md,
@@ -318,4 +531,73 @@ const s = StyleSheet.create({
   },
   cartaoOpcaoNome: { fontSize: FontSize.md, fontWeight: FontWeight.semiBold, color: Colors.textPrimary },
   cartaoOpcaoSub: { fontSize: FontSize.xs, color: Colors.textSecondary, marginTop: 2 },
+});
+
+// ─────────────────────────────────────────────
+// STYLES — date picker
+// ─────────────────────────────────────────────
+const dp = StyleSheet.create({
+  overlay: { flex: 1, backgroundColor: Colors.overlay, justifyContent: 'flex-end' },
+  sheet: {
+    backgroundColor: Colors.background,
+    borderTopLeftRadius: BorderRadius.xl, borderTopRightRadius: BorderRadius.xl,
+    paddingBottom: 32,
+  },
+  header: {
+    flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
+    paddingHorizontal: Spacing.md, paddingVertical: Spacing.md,
+    borderBottomWidth: 1, borderBottomColor: Colors.border,
+  },
+  iconBtn: { width: 40, height: 40, alignItems: 'center', justifyContent: 'center' },
+  titulo: { fontSize: FontSize.lg, fontWeight: FontWeight.bold, color: Colors.textPrimary },
+  confirmarBtn: { paddingHorizontal: 16, paddingVertical: 8 },
+  confirmarText: { fontSize: FontSize.md, fontWeight: FontWeight.bold, color: Colors.primaryDark },
+  atalhos: {
+    flexDirection: 'row', gap: 8, paddingHorizontal: Spacing.md, paddingVertical: 10,
+    borderBottomWidth: 1, borderBottomColor: Colors.border,
+  },
+  atalhoBtn: {
+    paddingHorizontal: 16, paddingVertical: 8,
+    backgroundColor: Colors.primaryLight, borderRadius: BorderRadius.full,
+  },
+  atalhoText: { fontSize: FontSize.sm, fontWeight: FontWeight.semiBold, color: Colors.primaryDark },
+  navMes: {
+    flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
+    paddingHorizontal: Spacing.md, paddingVertical: 12,
+  },
+  navBtn: { width: 36, height: 36, alignItems: 'center', justifyContent: 'center' },
+  navLabel: { fontSize: FontSize.md, fontWeight: FontWeight.bold, color: Colors.textPrimary },
+  semanasRow: {
+    flexDirection: 'row', paddingHorizontal: Spacing.md, marginBottom: 4,
+  },
+  diaSemanaTxt: {
+    flex: 1, textAlign: 'center',
+    fontSize: FontSize.xs, fontWeight: FontWeight.semiBold, color: Colors.textMuted,
+  },
+  grade: {
+    flexDirection: 'row', flexWrap: 'wrap', paddingHorizontal: Spacing.md,
+  },
+  diaVazio: { width: `${100 / 7}%` as any, aspectRatio: 1 },
+  diaBtn: {
+    width: `${100 / 7}%` as any, aspectRatio: 1,
+    alignItems: 'center', justifyContent: 'center',
+    borderRadius: BorderRadius.full,
+  },
+  diaBtnSelecionado: { backgroundColor: Colors.primary },
+  diaBtnHoje: { borderWidth: 1.5, borderColor: Colors.primaryDark },
+  diaTxt: { fontSize: FontSize.sm, color: Colors.textPrimary },
+  diaTxtSelecionado: { fontWeight: FontWeight.bold, color: Colors.textPrimary },
+  diaTxtHoje: { color: Colors.primaryDark, fontWeight: FontWeight.bold },
+  rodape: {
+    flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
+    paddingHorizontal: Spacing.md, paddingTop: 12,
+    borderTopWidth: 1, borderTopColor: Colors.border, marginTop: 8,
+  },
+  rodapeLabel: { fontSize: FontSize.sm, color: Colors.textSecondary, fontWeight: FontWeight.medium },
+  btnConfirmar: {
+    flexDirection: 'row', alignItems: 'center', gap: 6,
+    backgroundColor: Colors.primary, borderRadius: BorderRadius.md,
+    paddingHorizontal: 20, paddingVertical: 12,
+  },
+  btnConfirmarText: { fontSize: FontSize.md, fontWeight: FontWeight.bold, color: Colors.textPrimary },
 });

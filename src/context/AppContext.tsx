@@ -1,25 +1,33 @@
-// src/context/AppContext.tsx
-
 import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
-import AsyncStorage from '@react-native-async-storage/async-storage';
+import { Session, User } from '@supabase/supabase-js';
 import { Grupo, FiltroTempo } from '../types';
-import { gruposService } from '../services/grupos.service';
+import { supabase } from '../supabase/client';
 import { ORCAMENTO_PADRAO } from '../constants';
 import { cacheService } from '../services/cache.service';
 
-const DEFAULT_GRUPO_ID = process.env.EXPO_PUBLIC_DEFAULT_GRUPO_ID ?? '';
-
 interface AppContextData {
+  // Auth
+  sessao: Session | null;
+  usuario: User | null;
+  carregandoAuth: boolean;
+  sair: () => Promise<void>;
+
+  // Grupo
   grupo: Grupo | null;
   grupoId: string;
-  setGrupoId: (id: string) => void;
+  carregandoGrupo: boolean;
+
+  // Período
   mesSelecionado: number;
   setMesSelecionado: (mes: number) => void;
   anoSelecionado: number;
   setAnoSelecionado: (ano: number) => void;
+
+  // Orçamento
   orcamentoMensal: number;
   setOrcamentoMensal: (valor: number) => void;
-  carregandoGrupo: boolean;
+
+  // Filtro dashboard
   filtroTempo: FiltroTempo;
   setFiltroTempo: (filtro: FiltroTempo) => void;
 }
@@ -28,32 +36,85 @@ const AppContext = createContext<AppContextData>({} as AppContextData);
 
 export function AppProvider({ children }: { children: ReactNode }) {
   const hoje = new Date();
-  const [grupoId, setGrupoIdState] = useState(DEFAULT_GRUPO_ID);
+
+  // Auth States
+  const [sessao, setSessao] = useState<Session | null>(null);
+  const [carregandoAuth, setCarregandoAuth] = useState(true);
+
+  // Grupo States
   const [grupo, setGrupo] = useState<Grupo | null>(null);
+  const [grupoId, setGrupoId] = useState('');
+  const [carregandoGrupo, setCarregandoGrupo] = useState(false);
+
+  // Período States (Centraliza a data para todos os relatórios)
   const [mesSelecionado, setMesSelecionado] = useState(hoje.getMonth() + 1);
   const [anoSelecionado, setAnoSelecionado] = useState(hoje.getFullYear());
+
+  // Orçamento State
   const [orcamentoMensal, setOrcamentoMensalState] = useState(ORCAMENTO_PADRAO);
-  const [carregandoGrupo, setCarregandoGrupo] = useState(true);
+
+  // Filtro Dashboard (Mensal, Trimestral...)
   const [filtroTempo, setFiltroTempo] = useState<FiltroTempo>('mensal');
 
+  // ── 1. Gestão de Autenticação ──────────────────
   useEffect(() => {
-    carregarGrupo();
-    carregarOrcamento();
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      setSessao(session);
+      setCarregandoAuth(false);
+    });
+
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+      setSessao(session);
+      setCarregandoAuth(false);
+
+      if (!session) {
+        setGrupo(null);
+        setGrupoId('');
+      }
+    });
+
+    return () => subscription.unsubscribe();
+  }, []);
+
+  // ── 2. Fluxo de Dados: Usuário -> Grupo ────────
+  useEffect(() => {
+    if (sessao?.user) {
+      carregarGrupoDoUsuario(sessao.user.id);
+    }
+  }, [sessao?.user?.id]);
+
+  // ── 3. Fluxo de Dados: Grupo -> Orçamento ──────
+  useEffect(() => {
+    if (grupoId) carregarOrcamento();
   }, [grupoId]);
 
-  async function carregarGrupo() {
-    if (!grupoId) { setCarregandoGrupo(false); return; }
+  // Função principal de carregamento (essencial para RLS e Segurança)
+  async function carregarGrupoDoUsuario(userId: string) {
     setCarregandoGrupo(true);
-    const cached = await cacheService.carregar<Grupo>(`grupo_${grupoId}`, Infinity);
-    if (cached) setGrupo(cached);
     try {
-      const g = await gruposService.buscarPorId(grupoId);
-      if (g) {
-        setGrupo(g);
-        await cacheService.salvar(`grupo_${grupoId}`, g);
+      const { data, error } = await supabase
+        .from('membros')
+        .select('grupo_id, grupos(id, nome, email_relatorio, criado_em, codigo_convite)')
+        .eq('user_id', userId)
+        .single();
+
+      if (error || !data) {
+        console.warn('Usuário sem grupo vinculado');
+        setCarregandoGrupo(false);
+        return;
       }
-    } catch { }
-    finally { setCarregandoGrupo(false); }
+
+      const grupoData = (data as any).grupos as Grupo;
+      setGrupo(grupoData);
+      setGrupoId(grupoData.id);
+
+      // Persistência local para agilizar carregamentos futuros
+      await cacheService.salvar(`grupo_${grupoData.id}`, grupoData);
+    } catch (e) {
+      console.error('Erro ao carregar grupo:', e);
+    } finally {
+      setCarregandoGrupo(false);
+    }
   }
 
   async function carregarOrcamento() {
@@ -61,23 +122,28 @@ export function AppProvider({ children }: { children: ReactNode }) {
     if (val !== null) setOrcamentoMensalState(val);
   }
 
-  function setGrupoId(id: string) {
-    setGrupoIdState(id);
-    AsyncStorage.setItem('grupo_id_ativo', id);
+  async function sair() {
+    await supabase.auth.signOut();
   }
 
   async function setOrcamentoMensal(valor: number) {
     setOrcamentoMensalState(valor);
     await cacheService.salvarOrcamento(grupoId, valor);
+    // Aqui você pode adicionar um update no Supabase futuramente
   }
 
   return (
     <AppContext.Provider value={{
-      grupo, grupoId, setGrupoId,
+      sessao,
+      usuario: sessao?.user ?? null,
+      carregandoAuth,
+      sair,
+      grupo,
+      grupoId,
+      carregandoGrupo,
       mesSelecionado, setMesSelecionado,
       anoSelecionado, setAnoSelecionado,
       orcamentoMensal, setOrcamentoMensal,
-      carregandoGrupo,
       filtroTempo, setFiltroTempo,
     }}>
       {children}

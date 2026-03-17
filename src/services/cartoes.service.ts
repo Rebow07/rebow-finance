@@ -46,21 +46,19 @@ export const cartoesService = {
 
   /**
    * LÓGICA CORRETA DO LIMITE:
-   * - Soma TODAS as parcelas futuras (não pagas ainda) do cartão
-   * - Quando o usuário lança um pagamento/exclusão de parcela,
-   *   o limite volta automaticamente pois aquela transação some do banco
-   * - Limit usado = soma de todas transacoes do cartao com data >= hoje
+   * - Soma apenas transações NÃO PAGAS com data >= hoje
+   * - Transação paga = limite liberado automaticamente
+   * - Transação adiantada/deletada = limite liberado automaticamente
    */
   calcularResumos(cartoes: Cartao[], todasTransacoes: Transacao[]): CartaoResumo[] {
     const hoje = new Date();
     hoje.setHours(0, 0, 0, 0);
 
     return cartoes.map(cartao => {
-      // Soma TODAS as transações do cartão com data de hoje em diante
-      // (parcelas ainda não pagas = ainda consumindo limite)
       const transacoesCartao = todasTransacoes.filter(t => {
         if (t.cartao_id !== cartao.id) return false;
         if (t.tipo !== 'despesa') return false;
+        if (t.pago === true) return false; // ✅ PAGO = não consome limite
         const dataT = new Date(t.data + 'T00:00:00');
         return dataT >= hoje;
       });

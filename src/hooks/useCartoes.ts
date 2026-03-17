@@ -1,14 +1,13 @@
 // src/hooks/useCartoes.ts
 
 import { useState, useEffect, useCallback } from 'react';
-import { Cartao, CartaoResumo } from '../types';
+import { Cartao, CartaoResumo, Transacao } from '../types';
 import { cartoesService } from '../services/cartoes.service';
 import { supabase } from '../supabase/client';
-import { Transacao } from '../types';
 
 async function buscarTodasTransacoesCartao(grupoId: string): Promise<Transacao[]> {
   // Busca TODAS as transações de cartão com data de hoje em diante
-  // Isso representa o limite comprometido (parcelas pendentes)
+  // Inclui PAGAS e NÃO PAGAS — o calcularResumos decide o que consome limite
   const hoje = new Date();
   const dataHoje = `${hoje.getFullYear()}-${String(hoje.getMonth() + 1).padStart(2, '0')}-${String(hoje.getDate()).padStart(2, '0')}`;
 
@@ -18,7 +17,7 @@ async function buscarTodasTransacoesCartao(grupoId: string): Promise<Transacao[]
     .eq('grupo_id', grupoId)
     .eq('tipo', 'despesa')
     .not('cartao_id', 'is', null)
-    .gte('data', dataHoje);
+    .gte('data', dataHoje); // ← busca todas (pagas e não pagas) a partir de hoje
 
   if (error) console.error('Erro ao buscar transações cartão:', error.message);
   return (data as Transacao[]) ?? [];

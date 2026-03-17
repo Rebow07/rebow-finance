@@ -85,10 +85,6 @@ export const transacoesService = {
     if (error) throw new Error(`Erro ao deletar lote: ${error.message}`);
   },
 
-  /**
-   * Marca uma única transação como PAGA
-   * SET pago = true, pago_em = hoje
-   */
   async marcarComoPago(id: string): Promise<Transacao> {
     const { data, error } = await supabase
       .from('transacoes')
@@ -100,10 +96,6 @@ export const transacoesService = {
     return data as Transacao;
   },
 
-  /**
-   * Desmarca uma única transação (pago → false)
-   * SET pago = false, pago_em = null
-   */
   async marcarComoNaoPago(id: string): Promise<Transacao> {
     const { data, error } = await supabase
       .from('transacoes')
@@ -115,25 +107,17 @@ export const transacoesService = {
     return data as Transacao;
   },
 
-  /**
-   * Marca múltiplas transações como pagas ou não-pagas (lote)
-   * UPDATE transacoes SET pago = ?, pago_em = ? WHERE id IN (...)
-   */
-  async marcarPagoLote(ids: string[], pago: boolean): Promise<void> {
-    if (!ids.length) return;
-    const { error } = await supabase
-      .from('transacoes')
-      .update({
-        pago,
-        pago_em: pago ? dataHoje() : null,
-      })
-      .in('id', ids);
-    if (error) throw new Error(`Erro ao marcar lote: ${error.message}`);
-  },
+async marcarPagoLote(ids: string[], pago: boolean): Promise<void> {
+  if (!ids.length) return;
+  const { data, error } = await supabase
+    .from('transacoes')
+    .update({ pago, pago_em: pago ? dataHoje() : null })
+    .in('id', ids)
+    .select();
+  if (error) throw new Error(`Erro ao marcar lote: ${error.message}`);
+  console.log('Rows updated:', data?.length, 'ids:', ids); // debug
+},
 
-  /**
-   * Busca todas as parcelas de um grupo de parcelamento ordenadas
-   */
   async buscarPorGrupoParcela(parcelaGrupoId: string): Promise<Transacao[]> {
     const { data, error } = await supabase
       .from('transacoes')
@@ -143,16 +127,8 @@ export const transacoesService = {
     if (error) throw new Error(`Erro ao buscar parcelas: ${error.message}`);
     return (data as Transacao[]) ?? [];
   },
-};
+}; // <--- ESSA CHAVE FECHA O OBJETO E CORRIGE O SEU ERRO
 
-/**
- * Gera parcelas com arredondamento correto.
- * A primeira parcela absorve a diferença de centavos
- * para garantir que a soma = valor original declarado.
- *
- * Ex: R$ 2.000 em 4x → 500,00 + 500,00 + 500,00 + 500,00
- * Ex: R$ 1.000 em 3x → 333,34 + 333,33 + 333,33 = 1.000,00
- */
 export function gerarParcelas(
   base: TransacaoInsert,
   totalParcelas: number

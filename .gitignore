@@ -29,8 +29,13 @@ yarn-error.*
 .DS_Store
 *.pem
 
-# local env files
+# ✅ Variáveis de ambiente — NUNCA subir no GitHub
+.env
+.env.local
 .env*.local
+.env.development
+.env.production
+.env.test
 
 # typescript
 *.tsbuildinfo
