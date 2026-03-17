@@ -4,21 +4,16 @@ import React from 'react';
 import {
   ShoppingBag, Utensils, ShoppingCart, Car, Fuel,
   Home, Heart, Gamepad2, FileText, TrendingUp,
-  MoreHorizontal, LucideIcon,
+  MoreHorizontal, BookOpen, Plane, Sparkles, Smartphone,
+  PawPrint, Gift, UtensilsCrossed, Dumbbell, Tv,
+  LucideIcon,
 } from 'lucide-react-native';
 
 const ICON_MAP: Record<string, LucideIcon> = {
-  ShoppingBag,
-  Utensils,
-  ShoppingCart,
-  Car,
-  Fuel,
-  Home,
-  Heart,
-  Gamepad2,
-  FileText,
-  TrendingUp,
-  MoreHorizontal,
+  ShoppingBag, Utensils, ShoppingCart, Car, Fuel,
+  Home, Heart, Gamepad2, FileText, TrendingUp,
+  MoreHorizontal, BookOpen, Plane, Sparkles, Smartphone,
+  PawPrint, Gift, UtensilsCrossed, Dumbbell, Tv,
 };
 
 interface Props {

@@ -4,22 +4,36 @@ import { Categoria } from '../types';
 import { Colors } from '../theme';
 
 export const CATEGORIAS: Categoria[] = [
-  { id: 'compras',     label: 'Compras',     icon: 'ShoppingBag',    cor: Colors.cat_compras },
-  { id: 'comida',      label: 'Comida',      icon: 'Utensils',       cor: Colors.cat_comida },
-  { id: 'mercado',     label: 'Mercado',     icon: 'ShoppingCart',   cor: Colors.cat_mercado },
-  { id: 'transporte',  label: 'Transporte',  icon: 'Car',            cor: Colors.cat_transporte },
-  { id: 'combustivel', label: 'Combustível', icon: 'Fuel',           cor: Colors.cat_combustivel },
-  { id: 'casa',        label: 'Casa',        icon: 'Home',           cor: Colors.cat_casa },
-  { id: 'saude',       label: 'Saúde',       icon: 'Heart',          cor: Colors.cat_saude },
-  { id: 'lazer',       label: 'Lazer',       icon: 'Gamepad2',       cor: Colors.cat_lazer },
-  { id: 'contas',      label: 'Contas',      icon: 'FileText',       cor: Colors.cat_contas },
-  { id: 'renda',       label: 'Renda',       icon: 'TrendingUp',     cor: Colors.cat_renda },
-  { id: 'outros',      label: 'Outros',      icon: 'MoreHorizontal', cor: Colors.cat_outros },
+  { id: 'compras',       label: 'Compras',       icon: 'ShoppingBag',    cor: '#8E44AD' },
+  { id: 'comida',        label: 'Comida',        icon: 'Utensils',       cor: '#E67E22' },
+  { id: 'mercado',       label: 'Mercado',       icon: 'ShoppingCart',   cor: '#27AE60' },
+  { id: 'transporte',    label: 'Transporte',    icon: 'Car',            cor: '#2980B9' },
+  { id: 'combustivel',   label: 'Combustível',   icon: 'Fuel',           cor: '#D35400' },
+  { id: 'casa',          label: 'Casa',          icon: 'Home',           cor: '#16A085' },
+  { id: 'saude',         label: 'Saúde',         icon: 'Heart',          cor: '#E74C3C' },
+  { id: 'lazer',         label: 'Lazer',         icon: 'Gamepad2',       cor: '#9B59B6' },
+  { id: 'contas',        label: 'Contas',        icon: 'FileText',       cor: '#2C3E50' },
+  { id: 'educacao',      label: 'Educação',      icon: 'BookOpen',       cor: '#1ABC9C' },
+  { id: 'viagem',        label: 'Viagem',        icon: 'Plane',          cor: '#3498DB' },
+  { id: 'beleza',        label: 'Beleza',        icon: 'Sparkles',       cor: '#E91E8C' },
+  { id: 'eletronicos',   label: 'Eletrônicos',   icon: 'Smartphone',     cor: '#607D8B' },
+  { id: 'pet',           label: 'Pet',           icon: 'PawPrint',       cor: '#795548' },
+  { id: 'presente',      label: 'Presente',      icon: 'Gift',           cor: '#F06292' },
+  { id: 'restaurante',   label: 'Restaurante',   icon: 'UtensilsCrossed',cor: '#FF5722' },
+  { id: 'academia',      label: 'Academia',      icon: 'Dumbbell',       cor: '#4CAF50' },
+  { id: 'streaming',     label: 'Streaming',     icon: 'Tv',             cor: '#673AB7' },
+  { id: 'renda',         label: 'Renda',         icon: 'TrendingUp',     cor: '#27AE60' },
+  { id: 'outros',        label: 'Outros',        icon: 'MoreHorizontal', cor: '#95A5A6' },
 ];
 
 export const MESES = [
   'Janeiro', 'Fevereiro', 'Março', 'Abril', 'Maio', 'Junho',
   'Julho', 'Agosto', 'Setembro', 'Outubro', 'Novembro', 'Dezembro',
+];
+
+export const MESES_CURTOS = [
+  'Jan', 'Fev', 'Mar', 'Abr', 'Mai', 'Jun',
+  'Jul', 'Ago', 'Set', 'Out', 'Nov', 'Dez',
 ];
 
 export const ORCAMENTO_PADRAO = 3000;

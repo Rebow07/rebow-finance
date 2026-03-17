@@ -2,7 +2,7 @@
 
 import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { Grupo } from '../types';
+import { Grupo, FiltroTempo } from '../types';
 import { gruposService } from '../services/grupos.service';
 import { ORCAMENTO_PADRAO } from '../constants';
 import { cacheService } from '../services/cache.service';
@@ -20,6 +20,8 @@ interface AppContextData {
   orcamentoMensal: number;
   setOrcamentoMensal: (valor: number) => void;
   carregandoGrupo: boolean;
+  filtroTempo: FiltroTempo;
+  setFiltroTempo: (filtro: FiltroTempo) => void;
 }
 
 const AppContext = createContext<AppContextData>({} as AppContextData);
@@ -32,6 +34,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const [anoSelecionado, setAnoSelecionado] = useState(hoje.getFullYear());
   const [orcamentoMensal, setOrcamentoMensalState] = useState(ORCAMENTO_PADRAO);
   const [carregandoGrupo, setCarregandoGrupo] = useState(true);
+  const [filtroTempo, setFiltroTempo] = useState<FiltroTempo>('mensal');
 
   useEffect(() => {
     carregarGrupo();
@@ -41,22 +44,16 @@ export function AppProvider({ children }: { children: ReactNode }) {
   async function carregarGrupo() {
     if (!grupoId) { setCarregandoGrupo(false); return; }
     setCarregandoGrupo(true);
-
-    // Tenta cache primeiro
     const cached = await cacheService.carregar<Grupo>(`grupo_${grupoId}`, Infinity);
     if (cached) setGrupo(cached);
-
     try {
       const g = await gruposService.buscarPorId(grupoId);
       if (g) {
         setGrupo(g);
         await cacheService.salvar(`grupo_${grupoId}`, g);
       }
-    } catch {
-      // Usa cache se disponível
-    } finally {
-      setCarregandoGrupo(false);
-    }
+    } catch { }
+    finally { setCarregandoGrupo(false); }
   }
 
   async function carregarOrcamento() {
@@ -76,16 +73,12 @@ export function AppProvider({ children }: { children: ReactNode }) {
 
   return (
     <AppContext.Provider value={{
-      grupo,
-      grupoId,
-      setGrupoId,
-      mesSelecionado,
-      setMesSelecionado,
-      anoSelecionado,
-      setAnoSelecionado,
-      orcamentoMensal,
-      setOrcamentoMensal,
+      grupo, grupoId, setGrupoId,
+      mesSelecionado, setMesSelecionado,
+      anoSelecionado, setAnoSelecionado,
+      orcamentoMensal, setOrcamentoMensal,
       carregandoGrupo,
+      filtroTempo, setFiltroTempo,
     }}>
       {children}
     </AppContext.Provider>

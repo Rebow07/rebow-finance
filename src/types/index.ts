@@ -5,9 +5,11 @@ export interface Grupo {
   nome: string;
   criado_em?: string;
   created_at?: string;
+  email_relatorio?: string;
 }
 
 export type TipoTransacao = 'despesa' | 'renda';
+export type FiltroTempo = 'mensal' | 'trimestral' | 'semestral' | 'anual';
 
 export interface Transacao {
   id: string;
@@ -20,6 +22,11 @@ export interface Transacao {
   data: string;
   fixo: boolean;
   parcelado: boolean;
+  cartao_id?: string | null;
+  parcela_grupo_id?: string | null;
+  parcela_index?: number;
+  pago?: boolean;
+  pago_em?: string | null;
 }
 
 export interface TransacaoInsert {
@@ -32,6 +39,59 @@ export interface TransacaoInsert {
   data: string;
   fixo: boolean;
   parcelado: boolean;
+  cartao_id?: string | null;
+  parcela_grupo_id?: string | null;
+  parcela_index?: number;
+  pago?: boolean;
+  pago_em?: string | null;
+}
+
+export interface Renda {
+  id: string;
+  grupo_id: string;
+  criado_por: string;
+  nome: string;
+  valor: number;
+  fixo: boolean;
+  ativo: boolean;
+  criado_em: string;
+}
+
+export interface RendaInsert {
+  grupo_id: string;
+  criado_por: string;
+  nome: string;
+  valor: number;
+  fixo: boolean;
+  ativo: boolean;
+}
+
+export interface Cartao {
+  id: string;
+  grupo_id: string;
+  criado_por: string;
+  nome: string;
+  limite: number;
+  vencimento: number;
+  cor: string;
+  ativo: boolean;
+  criado_em: string;
+}
+
+export interface CartaoInsert {
+  grupo_id: string;
+  criado_por: string;
+  nome: string;
+  limite: number;
+  vencimento: number;
+  cor: string;
+  ativo: boolean;
+}
+
+export interface CartaoResumo extends Cartao {
+  totalGasto: number;
+  disponivel: number;
+  percentualUso: number;
 }
 
 export interface Categoria {
@@ -65,9 +125,3 @@ export interface FiltroTransacao {
 }
 
 export type RealtimeEvent = 'INSERT' | 'UPDATE' | 'DELETE';
-
-export interface RealtimePayload {
-  eventType: RealtimeEvent;
-  new: Partial<Transacao>;
-  old: Partial<Transacao>;
-}
